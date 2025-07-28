@@ -22,17 +22,14 @@ jobs:
       packages: write
       id-token: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        recipe:
-          - recipe.yml
-
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Build CritOS UNSTABLE Image
         uses: blue-build/github-action@v1.8
         with:
-          recipe: ${{ matrix.recipe }}
+          recipe: recipe.yml
           cosign_private_key: ${{ secrets.SIGNING_SECRET }}
           registry_token: ${{ secrets.GITHUB_TOKEN }}
           pr_event_number: ${{ github.event.number }}
@@ -40,9 +37,13 @@ jobs:
 
       - name: Create UNSTABLE GitHub Release (prerelease)
         if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DATE=$(date +'%Y-%m-%d')
           TAG="unstable-$DATE"
-          gh release create "$TAG" --title "CritOS Unstable – $DATE" --prerelease --notes "Automated UNSTABLE build for $DATE"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MESSAGE=$(git log -1 --pretty=format:"%s")
+          gh release create "$TAG" \
+            --title "CritOS Unstable – $DATE" \
+            --prerelease \
+            --notes "$MESSAGE"
