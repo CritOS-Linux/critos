@@ -17,12 +17,12 @@ jobs:
 
       - name: Pull latest image
         run: |
-          docker pull ghcr.io/${{ github.repository }}:latest
+          docker pull ghcr.io/CritOS-Linux/critos:latest
 
       - name: Retag as stable
         run: |
-          docker tag ghcr.io/${{ github.repository }}:latest ghcr.io/${{ github.repository }}:stable
+          docker tag ghcr.io/CritOS-Linux/critos:latest ghcr.io/CritOS-Linux/critos:stable
 
       - name: Push stable image
         run: |
-          docker push ghcr.io/${{ github.repository }}:stable
+          docker push ghcr.io/CritOS-Linux/critos:stable
