@@ -40,7 +40,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          DATE=$(date +'%Y-%m-%d')
+          DATE=$(date +'%Y-%m-%d-%H%M')
           TAG="unstable-$DATE"
           MESSAGE=$(git log -1 --pretty=format:"%s")
           gh release create "$TAG" \
