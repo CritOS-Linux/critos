@@ -1,0 +1,5 @@
+[critos]
+name=CritOS Custom RPMs
+baseurl=https://critos-linux.github.io/critos-rpms/
+enabled=1
+gpgcheck=0
