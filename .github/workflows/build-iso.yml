@@ -1,0 +1,54 @@
+name: Generate ISOs from GHCR images using JasonN3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-isos:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 🧰 Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y podman jq
+
+      - name: 📄 Define images to process
+        run: |
+          echo '["critos"]' > image-list.json
+
+      - name: 📁 Prepare directories
+        run: |
+          mkdir -p output dnf-cache
+
+      - name: 🔨 Run build-container-installer for each image
+        run: |
+          for image in $(jq -r '.[]' image-list.json); do
+            echo "🔧 Building ISO for: $image"
+
+            IMAGE_NAME="$image"
+            IMAGE_REPO="ghcr.io/critos-linux"
+            IMAGE_TAG="latest"
+            ISO_NAME="${image}.iso"
+            VARIANT="Kinoite"
+
+            podman run --rm --privileged \
+              -e IMAGE_NAME="${IMAGE_NAME}" \
+              -e IMAGE_REPO="${IMAGE_REPO}" \
+              -e IMAGE_TAG="${IMAGE_TAG}" \
+              -e ISO_NAME="build/${ISO_NAME}" \
+              -e VARIANT="${VARIANT}" \
+              -e SECURE_BOOT_KEY_URL="https://github.com/ublue-os/bazzite/raw/main/secure_boot.der" \
+              -e ENROLLMENT_PASSWORD="universalblue" \
+              -v ${{ github.workspace }}/output:/build-container-installer/build \
+              -v ${{ github.workspace }}/dnf-cache:/cache/dnf \
+              ghcr.io/jasonn3/build-container-installer
+          done
+
+      - name: 📦 Upload ISOs
+        uses: actions/upload-artifact@v4
+        with:
+          name: critos-linux-isos
+          path: output/*.iso
