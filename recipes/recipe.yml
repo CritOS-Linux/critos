@@ -42,9 +42,8 @@ modules:
   - type: os-release
     properties:
         ID: critos
-        NAME: CritOS 42
-        PRETTY_NAME: CritOS 42 Plasma
-        LOGO: critos-logo
+        NAME: CritOS Linux
+        PRETTY_NAME: CritOS Linux 42
 
   - type: signing # this sets up the proper policy & signing files for signed images to work fully
 
