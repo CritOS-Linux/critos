@@ -1,3 +1,26 @@
+name: Build CritOS
+
+on:
+  schedule:
+    - cron: "40 4 * * 1" # 4:40 UTC Monday
+  push:
+    branches:
+      - testing
+      - unstable
+    paths-ignore:
+      - "**.md"
+      - "**.txt"
+      - ".github/workflows/build_iso*.yml"
+  pull_request:
+    branches:
+      - testing
+      - unstable
+    paths-ignore:
+      - "**.md"
+      - "**.txt"
+      - ".github/workflows/build_iso*.yml"
+  workflow_dispatch:
+
 jobs:
   push-ghcr:
     name: Make
@@ -7,6 +30,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    if: github.ref_name == 'testing' || github.ref_name == 'unstable'
     strategy:
       fail-fast: false
       matrix:
@@ -16,6 +40,7 @@ jobs:
         target_image_flavor: [main]
         target_nvidia_flavor: [nvidia, nvidia-open]
         fedora_version: [42]
+
     steps:
       - name: Mount btrfs for padman storage
         uses: ublue-os/container-storage-action@main
@@ -36,7 +61,7 @@ jobs:
               if [[ "${{ matrix.target_image_flavor }}" == "main" ]]; then
                   echo "IMAGE_FLAVOR=${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
               else
-                  echo "IMAGE_FLAVOR=${{ format('{0}-{1}', matrix.target_image_flavor, matrix.target_nvidia_flavor) }}" >> $GITHUB_ENV
+                  echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}-${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
               fi
           else
               echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}" >> $GITHUB_ENV
@@ -51,17 +76,17 @@ jobs:
 
           if [[ "${{ matrix.base_name }}" == "critos-deck" ]]; then
               if [[ "${{ matrix.target_image_flavor }}" == "asus" ]]; then
-                  echo "IMAGE_NAME=${{ format('{0}{1}', 'critos-ally', '${DESKTOP}') }}" >> $GITHUB_ENV
+                  echo "IMAGE_NAME=critos-ally${DESKTOP}" >> $GITHUB_ENV
               else
-                  echo "IMAGE_NAME=${{ format('{0}{1}', 'critos-deck', '${DESKTOP}') }}" >> $GITHUB_ENV
+                  echo "IMAGE_NAME=critos-deck${DESKTOP}" >> $GITHUB_ENV
               fi
           elif [[ "${{ matrix.base_name }}" == "critos-deck-nvidia" ]]; then
-              echo "IMAGE_NAME=${{ format('{0}{1}', 'critos-deck-nvidia', '${DESKTOP}') }}" >> $GITHUB_ENV
+              echo "IMAGE_NAME=critos-deck-nvidia${DESKTOP}" >> $GITHUB_ENV
           else
               if [[ "${{ env.IMAGE_FLAVOR }}" == "main" ]]; then
-                  echo "IMAGE_NAME=${{ format('{0}{1}', 'critos', '${DESKTOP}') }}" >> $GITHUB_ENV
+                  echo "IMAGE_NAME=critos${DESKTOP}" >> $GITHUB_ENV
               else
-                  echo "IMAGE_NAME=${{ format('{0}{1}-{2}', 'critos', '${DESKTOP}', env.IMAGE_FLAVOR) }}" >> $GITHUB_ENV
+                  echo "IMAGE_NAME=critos${DESKTOP}-${{ env.IMAGE_FLAVOR }}" >> $GITHUB_ENV
               fi
           fi
 
@@ -78,11 +103,11 @@ jobs:
           echo "SHA_HEAD_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Checkout Push to Registry Action
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        uses: actions/checkout@v5
 
       - name: Get source versions
         id: labels
-        uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea
+        uses: Wandalen/wretry.action@v3.8.0
         with:
           attempt_limit: 3
           attempt_delay: 15000
@@ -90,7 +115,7 @@ jobs:
             set -eo pipefail
             skopeo inspect docker://${{ env.PULL_IMAGE_REGISTRY }}/${{ matrix.base_image_name }}-${{ matrix.base_image_flavor }}:${{ matrix.fedora_version }} > source.json
             ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
-            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
+            if [ -z "$ver" ] || [ "$ver" = "null" ]; then
                 echo "inspected image version must not be empty or null"
                 exit 1
             fi
@@ -100,31 +125,25 @@ jobs:
         id: generate-version
         shell: bash
         run: |
-          # Generate the primary version key that will be stored on os-release,
-          # shown on the bootloader, and used for the image tag.
           UPSTREAM_TAG="${{ env.SOURCE_IMAGE_VERSION }}"
-          # Remove .0 suffix from upstream tag so we can add our own and
-          # the wrong one does not end up in the image.
           UPSTREAM_TAG="${UPSTREAM_TAG%\.[0-9]}"
           FEDORA_VERSION="${{ matrix.fedora_version }}"
           SHA_SHORT="${GITHUB_SHA::7}"
 
           if [ -n "${{ github.event.pull_request.number }}" ]; then
-            VERSION="pr-${FEDORA_VERSION}-${{ github.event.pull_request.number }}"
-            PRETTY_VERSION="PR (${{ github.event.pull_request.number }}, ${UPSTREAM_TAG})"
+              VERSION="pr-${FEDORA_VERSION}-${{ github.event.pull_request.number }}"
+              PRETTY_VERSION="PR (${{ github.event.pull_request.number }}, ${UPSTREAM_TAG})"
           elif [[ ${{ github.ref_name }} == "unstable" ]]; then
-            VERSION="unstable-${UPSTREAM_TAG}"
-            PRETTY_VERSION="Unstable (F${UPSTREAM_TAG}, #${SHA_SHORT})"
+              VERSION="unstable-${UPSTREAM_TAG}"
+              PRETTY_VERSION="Unstable (F${UPSTREAM_TAG}, #${SHA_SHORT})"
           elif [[ ${{ github.ref_name }} == "testing" ]]; then
-            VERSION="testing-${UPSTREAM_TAG}"
-            PRETTY_VERSION="Testing (F${UPSTREAM_TAG}, #${SHA_SHORT})"
+              VERSION="testing-${UPSTREAM_TAG}"
+              PRETTY_VERSION="Testing (F${UPSTREAM_TAG}, #${SHA_SHORT})"
           else
-            VERSION="${UPSTREAM_TAG}"
-            PRETTY_VERSION="Stable (F${UPSTREAM_TAG})"
+              VERSION="${UPSTREAM_TAG}"
+              PRETTY_VERSION="Stable (F${UPSTREAM_TAG})"
           fi
 
           echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           echo "pretty=${PRETTY_VERSION}" >> $GITHUB_OUTPUT
-
-          echo "Generated the following:"
           cat $GITHUB_OUTPUT
