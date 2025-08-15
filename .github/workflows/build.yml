@@ -52,6 +52,7 @@ jobs:
               echo "CONTAINER_TARGET=critos-nvidia" >> $GITHUB_ENV
           else
               echo "CONTAINER_TARGET=${{ matrix.base_name }}" >> $GITHUB_ENV
+          fi
 
       - name: Define env.IMAGE_FLAVOR
         run: |
@@ -63,6 +64,7 @@ jobs:
               fi
           else
               echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}" >> $GITHUB_ENV
+          fi
 
       - name: Define env.IMAGE_NAME
         run: |
@@ -76,6 +78,7 @@ jobs:
                   echo "IMAGE_NAME=critos-ally${DESKTOP}" >> $GITHUB_ENV
               else
                   echo "IMAGE_NAME=critos-deck${DESKTOP}" >> $GITHUB_ENV
+              fi
           elif [[ "${{ matrix.base_name }}" == "critos-deck-nvidia" ]]; then
               echo "IMAGE_NAME=critos-deck-nvidia${DESKTOP}" >> $GITHUB_ENV
           else
@@ -83,6 +86,7 @@ jobs:
                   echo "IMAGE_NAME=critos${DESKTOP}" >> $GITHUB_ENV
               else
                   echo "IMAGE_NAME=critos${DESKTOP}-${{ env.IMAGE_FLAVOR }}" >> $GITHUB_ENV
+              fi
           fi
 
       - name: Define env.NVIDIA_BASE
@@ -91,6 +95,7 @@ jobs:
               echo "NVIDIA_BASE=critos-deck" >> $GITHUB_ENV
           else
               echo "NVIDIA_BASE=critos" >> $GITHUB_ENV
+          fi
 
       - name: Define env.SHA_HEAD_SHORT
         run: |
