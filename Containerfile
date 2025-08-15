@@ -55,7 +55,7 @@ COPY system-rootfs/desktop/shared system-rootfs/desktop/${BASE_IMAGE_NAME} /
 RUN mkdir -p /var/roothome && \
     dnf5 -y install dnf5-plugins && \
     for copr in \
-        critos-org/critos \
+        critos-org/critos  \
         ublue-os/packages \
         ublue-os/staging; \
     do \
@@ -88,6 +88,7 @@ RUN \
 
 # Cleanup and Finalize
 COPY system-rootfs/overrides /
+RUN mkdir -p /mnt
 RUN --mount=type=bind,source=${PWD}/build-tools,target=/mnt/build-tools \
     bash /mnt/build-tools/image-info
 
