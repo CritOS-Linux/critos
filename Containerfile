@@ -33,7 +33,7 @@ ARG SOURCE_IMAGE="${SOURCE_IMAGE:-$BASE_IMAGE_NAME-$BASE_IMAGE_FLAVOR}"
 ARG BASE_IMAGE="ghcr.io/ublue-os/${SOURCE_IMAGE}"
 
 FROM scratch AS ctx
-COPY build_files /build_files
+COPY build-tools /
 
 ####################
 # Build for Desktops
