@@ -21,6 +21,10 @@ on:
       - ".github/workflows/build_iso*.yml"
   workflow_dispatch:
 
+env:
+  PULL_IMAGE_REGISTRY: ghcr.io/critos-linux
+  PUSH_IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+
 jobs:
   push-ghcr:
     name: Make
@@ -30,7 +34,10 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    if: github.ref_name == 'testing' || github.ref_name == 'unstable'
+    # Job will run automatically only on branches testing or unstable.
+    # Manual runs (workflow_dispatch) are still allowed.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == 'testing' || github.ref_name == 'unstable' }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -113,6 +120,7 @@ jobs:
           attempt_delay: 15000
           command: |
             set -eo pipefail
+            # Use docker://<registry>/<repo>:<tag> — PULL_IMAGE_REGISTRY must NOT include scheme.
             skopeo inspect docker://${{ env.PULL_IMAGE_REGISTRY }}/${{ matrix.base_image_name }}-${{ matrix.base_image_flavor }}:${{ matrix.fedora_version }} > source.json
             ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
             if [ -z "$ver" ] || [ "$ver" = "null" ]; then
