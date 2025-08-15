@@ -21,6 +21,10 @@ on:
       - ".github/workflows/build_iso*.yml"
   workflow_dispatch:
 
+env:
+  PULL_IMAGE_REGISTRY: ghcr.io/ublue-os
+  PUSH_IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+
 jobs:
   push-ghcr:
     name: Make
