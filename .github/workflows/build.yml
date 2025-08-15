@@ -57,52 +57,52 @@ jobs:
       - name: Define env.CONTAINER_TARGET
         run: |
           if [[ "${{ matrix.base_name }}" == "critos-deck-nvidia" ]]; then
-              echo "CONTAINER_TARGET=critos-nvidia" >> $GITHUB_ENV
+            echo "CONTAINER_TARGET=critos-nvidia" >> $GITHUB_ENV
           else
-              echo "CONTAINER_TARGET=${{ matrix.base_name }}" >> $GITHUB_ENV
+            echo "CONTAINER_TARGET=${{ matrix.base_name }}" >> $GITHUB_ENV
           fi
 
       - name: Define env.IMAGE_FLAVOR
         run: |
           if [[ "${{ matrix.base_name }}" =~ "nvidia" ]]; then
-              if [[ "${{ matrix.target_image_flavor }}" == "main" ]]; then
-                  echo "IMAGE_FLAVOR=${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
-              else
-                  echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}-${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
-              fi
+            if [[ "${{ matrix.target_image_flavor }}" == "main" ]]; then
+              echo "IMAGE_FLAVOR=${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
+            else
+              echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}-${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
+            fi
           else
-              echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}" >> $GITHUB_ENV
+            echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}" >> $GITHUB_ENV
           fi
 
       - name: Define env.IMAGE_NAME
         run: |
           DESKTOP=""
           if [[ "${{ matrix.base_image_name }}" == "silverblue" ]]; then
-              DESKTOP="-gnome"
+            DESKTOP="-gnome"
           fi
 
           if [[ "${{ matrix.base_name }}" == "critos-deck" ]]; then
-              if [[ "${{ matrix.target_image_flavor }}" == "asus" ]]; then
-                  echo "IMAGE_NAME=critos-ally${DESKTOP}" >> $GITHUB_ENV
-              else
-                  echo "IMAGE_NAME=critos-deck${DESKTOP}" >> $GITHUB_ENV
-              fi
+            if [[ "${{ matrix.target_image_flavor }}" == "asus" ]]; then
+              echo "IMAGE_NAME=critos-ally${DESKTOP}" >> $GITHUB_ENV
+            else
+              echo "IMAGE_NAME=critos-deck${DESKTOP}" >> $GITHUB_ENV
+            fi
           elif [[ "${{ matrix.base_name }}" == "critos-deck-nvidia" ]]; then
-              echo "IMAGE_NAME=critos-deck-nvidia${DESKTOP}" >> $GITHUB_ENV
+            echo "IMAGE_NAME=critos-deck-nvidia${DESKTOP}" >> $GITHUB_ENV
           else
-              if [[ "${{ env.IMAGE_FLAVOR }}" == "main" ]]; then
-                  echo "IMAGE_NAME=critos${DESKTOP}" >> $GITHUB_ENV
-              else
-                  echo "IMAGE_NAME=critos${DESKTOP}-${{ env.IMAGE_FLAVOR }}" >> $GITHUB_ENV
-              fi
+            if [[ "${{ env.IMAGE_FLAVOR }}" == "main" ]]; then
+              echo "IMAGE_NAME=critos${DESKTOP}" >> $GITHUB_ENV
+            else
+              echo "IMAGE_NAME=critos${DESKTOP}-${{ env.IMAGE_FLAVOR }}" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Define env.NVIDIA_BASE
         run: |
           if [[ "${{ matrix.base_name }}" == "critos-deck-nvidia" ]]; then
-              echo "NVIDIA_BASE=critos-deck" >> $GITHUB_ENV
+            echo "NVIDIA_BASE=critos-deck" >> $GITHUB_ENV
           else
-              echo "NVIDIA_BASE=critos" >> $GITHUB_ENV
+            echo "NVIDIA_BASE=critos" >> $GITHUB_ENV
           fi
 
       - name: Define env.SHA_HEAD_SHORT
@@ -113,7 +113,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Authenticate to GHCR using GITHUB_TOKEN
-        # this is required so skopeo can inspect ghcr.io images when private
+        # required so skopeo can inspect ghcr.io images when private
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username "${{ github.actor }}" --password-stdin
         env:
@@ -130,8 +130,8 @@ jobs:
             skopeo inspect docker://${{ env.PULL_IMAGE_REGISTRY }}/${{ matrix.base_image_name }}-${{ matrix.base_image_flavor }}:${{ matrix.fedora_version }} > source.json
             ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
             if [ -z "$ver" ] || [ "$ver" = "null" ]; then
-                echo "inspected image version must not be empty or null" >&2
-                exit 1
+              echo "inspected image version must not be empty or null" >&2
+              exit 1
             fi
             echo "SOURCE_IMAGE_VERSION=$ver" >> $GITHUB_ENV
 
@@ -145,17 +145,17 @@ jobs:
           SHA_SHORT="${GITHUB_SHA::7}"
 
           if [ -n "${{ github.event.pull_request.number }}" ]; then
-              VERSION="pr-${FEDORA_VERSION}-${{ github.event.pull_request.number }}"
-              PRETTY_VERSION="PR (${{ github.event.pull_request.number }}, ${UPSTREAM_TAG})"
+            VERSION="pr-${FEDORA_VERSION}-${{ github.event.pull_request.number }}"
+            PRETTY_VERSION="PR (${{ github.event.pull_request.number }}, ${UPSTREAM_TAG})"
           elif [[ ${{ github.ref_name }} == "unstable" ]]; then
-              VERSION="unstable-${UPSTREAM_TAG}"
-              PRETTY_VERSION="Unstable (F${UPSTREAM_TAG}, #${SHA_SHORT})"
+            VERSION="unstable-${UPSTREAM_TAG}"
+            PRETTY_VERSION="Unstable (F${UPSTREAM_TAG}, #${SHA_SHORT})"
           elif [[ ${{ github.ref_name }} == "testing" ]]; then
-              VERSION="testing-${UPSTREAM_TAG}"
-              PRETTY_VERSION="Testing (F${UPSTREAM_TAG}, #${SHA_SHORT})"
+            VERSION="testing-${UPSTREAM_TAG}"
+            PRETTY_VERSION="Testing (F${UPSTREAM_TAG}, #${SHA_SHORT})"
           else
-              VERSION="${UPSTREAM_TAG}"
-              PRETTY_VERSION="Stable (F${UPSTREAM_TAG})"
+            VERSION="${UPSTREAM_TAG}"
+            PRETTY_VERSION="Stable (F${UPSTREAM_TAG})"
           fi
 
           echo "tag=${VERSION}" >> $GITHUB_OUTPUT
@@ -164,7 +164,7 @@ jobs:
 
       - name: Prepare build args file
         run: |
-          cat > build_args.txt <<EOF
+          cat > build_args.txt <<'EOF'
 IMAGE_NAME=${{ env.IMAGE_NAME }}
 IMAGE_FLAVOR=${{ env.IMAGE_FLAVOR }}
 NVIDIA_FLAVOR=${{ matrix.target_nvidia_flavor }}
