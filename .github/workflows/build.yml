@@ -52,7 +52,7 @@ jobs:
         base_name: [critos]
         base_image_name: [kinoite]
         target_image_flavor: [main]
-        target_nvidia_flavor: [nvidia, nvidia-open]
+        target_nvidia_flavor: [nvidia]
         fedora_version: [42]
         include:
           - fedora_version: 42
