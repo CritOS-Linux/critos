@@ -91,7 +91,7 @@ RUN \
 
 # Cleanup and Finalize
 COPY system-rootfs/overrides /
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \ \
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/image-info && \
     /ctx/initramfs-build && \
     /ctx/finalize
