@@ -93,7 +93,7 @@ RUN \
 COPY system-rootfs/overrides /
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \ \
     /ctx/image-info && \
-    /ctx/build-initramfs && \
+    /ctx/initramfs-build && \
     /ctx/finalize
 
 RUN dnf5 config-manager setopt skip_if_unavailable=1 && \
