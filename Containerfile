@@ -91,6 +91,7 @@ RUN \
 
 # Cleanup and Finalize
 COPY system-rootfs/overrides /
+ENV FEDORA_VERSION=${FEDORA_VERSION}
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/image-info && \
     /ctx/initramfs-build && \
