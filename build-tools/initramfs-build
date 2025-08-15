@@ -1,0 +1,15 @@
+#!/usr/bin/bash
+
+set -eoux pipefail
+
+echo "::group::Executing build-initramfs"
+trap 'echo "::endgroup::"' EXIT
+
+# Szukamy wszystkich katalogów z modułami jądra
+for KERNEL_DIR in /usr/lib/modules/*; do
+    KERNEL_VERSION=$(basename "$KERNEL_DIR")
+    echo "Generating initramfs for kernel: $KERNEL_VERSION"
+
+    /usr/bin/dracut --no-hostonly --reproducible --zstd -v --add ostree -f "/usr/lib/modules/$KERNEL_VERSION/initramfs.img"
+    chmod 0600 "/usr/lib/modules/$KERNEL_VERSION/initramfs.img"
+done
