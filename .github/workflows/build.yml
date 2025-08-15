@@ -155,3 +155,36 @@ jobs:
           echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           echo "pretty=${PRETTY_VERSION}" >> $GITHUB_OUTPUT
           cat $GITHUB_OUTPUT
+    - name: Prepare build args file
+        run: |
+            cat <<'EOF' >>build_args.txt
+            IMAGE_NAME=${{ env.IMAGE_NAME }}
+            IMAGE_FLAVOR=${{ env.IMAGE_FLAVOR }}
+            NVIDIA_FLAVOR=${{ matrix.target_nvidia_flavor }}
+            NVIDIA_BASE=${{ env.NVIDIA_BASE }}
+            IMAGE_VENDOR=${{ github.repository_owner }}
+            BASE_IMAGE_NAME=${{ matrix.base_image_name }}
+            BASE_IMAGE_FLAVOR=${{ matrix.base_image_flavor }}
+            FEDORA_VERSION=${{ matrix.fedora_version }}
+            IMAGE_BRANCH=${{ github.ref_name }}
+            SHA_HEAD_SHORT=${{ env.SHA_HEAD_SHORT }}
+            VERSION_TAG=${{ steps.generate-version.outputs.tag }}
+            VERSION_PRETTY=${{ steps.generate-version.outputs.pretty }}
+            EOF
+
+    - name: Build Image
+        id: build-image
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            sudo -E buildah build \
+                --target ${{ env.CONTAINER_TARGET }} \
+                --build-arg-file build_args.txt \
+                --secret "id=GITHUB_TOKEN,env=GITHUB_TOKEN" \
+                --tag raw-img .
+
+    - name: Lowercase Registry
+        id: registry_case
+        uses: ASzc/change-string-case-action@d0603cd0a7dd490be678164909f65c7737470a7f # v6
+        with:
+            string: ${{ env.PUSH_IMAGE_REGISTRY }}
