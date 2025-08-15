@@ -32,6 +32,9 @@ ARG FEDORA_VERSION="${FEDORA_VERSION:-42}"
 ARG SOURCE_IMAGE="${SOURCE_IMAGE:-$BASE_IMAGE_NAME-$BASE_IMAGE_FLAVOR}"
 ARG BASE_IMAGE="ghcr.io/ublue-os/${SOURCE_IMAGE}"
 
+FROM scratch AS ctx
+COPY build_files /build_files
+
 ####################
 # Build for Desktops
 ####################
@@ -55,7 +58,7 @@ COPY system-rootfs/desktop/shared system-rootfs/desktop/${BASE_IMAGE_NAME} /
 RUN mkdir -p /var/roothome && \
     dnf5 -y install dnf5-plugins && \
     for copr in \
-        critos-org/critos  \
+        @critos-org/critos  \
         ublue-os/packages \
         ublue-os/staging; \
     do \
@@ -88,15 +91,10 @@ RUN \
 
 # Cleanup and Finalize
 COPY system-rootfs/overrides /
-RUN mkdir -p /mnt
-RUN --mount=type=bind,source=${PWD}/build-tools,target=/mnt/build-tools \
-    bash /mnt/build-tools/image-info
-
-RUN --mount=type=bind,source=${PWD}/build-tools,target=/mnt/build-tools \
-    bash /mnt/build-tools/initramfs-build
-
-RUN --mount=type=bind,source=${PWD}/build-tools,target=/mnt/build-tools \
-    bash /mnt/build-tools/Finalize
+RUN --mount=type=bind,from=ctx,source=/,target=/ctx \ \
+    /ctx/image-info && \
+    /ctx/build-initramfs && \
+    /ctx/finalize
 
 RUN dnf5 config-manager setopt skip_if_unavailable=1 && \
     bootc container lint
