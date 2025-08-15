@@ -286,3 +286,20 @@ jobs:
                     log_sum "$dest_image"
             done
             log_sum '```'
+
+    - name: Get Image Digest
+        id: digest
+        run: |
+            DIGEST=$(sudo skopeo inspect --format '{{.Digest}}' ${{ steps.rechunk.outputs.ref }})
+            echo "Digest is: $DIGEST"
+            echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+
+    - name: Sign Container Image
+        uses: EyeCantCU/cosign-action/sign@58722a084c82190b57863002d494c91eabbe9e79 # v0.3.0
+        if: github.event_name != 'pull_request'
+        with:
+            containers: ${{ env.IMAGE_NAME }}
+            registry-token: ${{ secrets.GITHUB_TOKEN }}
+            signing-secret: ${{ secrets.SIGNING_SECRET }}
+            tags: ${{ steps.digest.outputs.digest }}
+            registry: ${{ env.PUSH_IMAGE_REGISTRY }}
