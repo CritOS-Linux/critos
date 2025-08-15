@@ -19,7 +19,15 @@ on:
       - "**.md"
       - "**.txt"
       - ".github/workflows/build_iso*.yml"
+  merge_group:
   workflow_dispatch:
+    inputs:
+      handwritten:
+        description: "Small changelog:"
+      fresh-rechunk:
+        description: "Clear rechunk history"
+        type: boolean
+        default: false
 
 env:
   PULL_IMAGE_REGISTRY: ghcr.io/ublue-os
@@ -35,7 +43,6 @@ jobs:
     name: Make
     runs-on: ubuntu-24.04
     continue-on-error: false
-    # job runs automatically only on testing/unstable, manual runs still allowed
     if: ${{ github.event_name == 'workflow_dispatch' || github.ref_name == 'testing' || github.ref_name == 'unstable' }}
 
     strategy:
@@ -47,9 +54,13 @@ jobs:
         target_image_flavor: [main]
         target_nvidia_flavor: [nvidia, nvidia-open]
         fedora_version: [42]
+        include:
+          - fedora_version: 42
+            is_latest_version: true
+            is_stable_version: true
 
     steps:
-      - name: Mount btrfs for padman storage
+      - name: Mount btrfs for podman storage
         uses: ublue-os/container-storage-action@main
         with:
           target-dir: /var/lib/containers
@@ -111,13 +122,6 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v5
-
-      - name: Authenticate to GHCR using GITHUB_TOKEN
-        # required so skopeo can inspect ghcr.io images when private
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | skopeo login ghcr.io --username "${{ github.actor }}" --password-stdin
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get source versions
         id: labels
@@ -192,6 +196,93 @@ jobs:
 
       - name: Lowercase Registry
         id: registry_case
-        uses: ASzc/change-string-case-action@d0603cd0a7dd490be678164909f65c7737470a7f # v6
+        uses: ASzc/change-string-case-action@v6
         with:
           string: ${{ env.PUSH_IMAGE_REGISTRY }}
+
+      - name: Generate previous reference
+        id: generate-prev-ref
+        shell: bash
+        run: |
+          if [ "${{ github.event.inputs.fresh-rechunk }}" == "true" ]; then
+            IMAGEREF=""
+          else
+            IMAGEREF="${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}:stable"
+          fi
+
+          echo "ref=${IMAGEREF}" >> $GITHUB_OUTPUT
+          echo "Generated the following:"
+          cat $GITHUB_OUTPUT
+
+      - name: Run Rechunker
+        id: rechunk
+        uses: hhd-dev/rechunk@v1.2.3
+        with:
+          rechunk: 'ghcr.io/hhd-dev/rechunk:v1.2.3'
+          ref: 'raw-img'
+          prev-ref: '${{ steps.generate-prev-ref.outputs.ref }}'
+          version: '${{ steps.generate-version.outputs.tag }}'
+          labels: |
+            org.opencontainers.image.created=<timestamp>
+            org.opencontainers.image.description=CritOS Linux is a custom image built upon Fedora Atomic Desktops aiming to bring the best of Linux gaming to all of your devices.
+            org.opencontainers.image.licenses=Apache-2.0
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=https://github.com/CritOS-Linux/critos
+            org.opencontainers.image.title=CritOS Linux
+            org.opencontainers.image.vendor=CritOS
+            org.opencontainers.image.url=https://critos.github.io/
+
+      - name: Generate tags
+        id: generate-tags
+        shell: bash
+        run: |
+          VERSION_TAG="${{ steps.rechunk.outputs.version }}"
+          UPSTREAM_TAG="${{ env.SOURCE_IMAGE_VERSION }}"
+          FEDORA_VERSION="${{ matrix.fedora_version }}"
+          SHA_SHORT="${GITHUB_SHA::7}"
+          BUILD_TAGS=( "${VERSION_TAG}" )
+
+          unset LATEST
+          if [[ "${{ matrix.is_latest_version }}" == "true" ]] && [[ "${{ matrix.is_stable_version }}" == "true" ]]; then
+            LATEST="1"
+          fi
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            if [ -n "$LATEST" ]; then
+              BUILD_TAGS+=("pr-${{ github.event.pull_request.number }}")
+            fi
+          elif [[ ${{ github.ref_name }} == "unstable" ]]; then
+            BUILD_TAGS+=("${FEDORA_VERSION}-unstable" "unstable-${FEDORA_VERSION}")
+            if [ -n "$LATEST" ]; then BUILD_TAGS+=("unstable"); fi
+          elif [[ ${{ github.ref_name }} == "testing" ]]; then
+            BUILD_TAGS+=("${FEDORA_VERSION}-testing" "testing-${FEDORA_VERSION}")
+            if [ -n "$LATEST" ]; then BUILD_TAGS+=("testing"); fi
+          else
+            BUILD_TAGS+=("${FEDORA_VERSION}" "stable-${VERSION_TAG}" "${FEDORA_VERSION}-stable" "stable-${FEDORA_VERSION}")
+            if [ -n "$LATEST" ]; then BUILD_TAGS+=("latest" "stable"); fi
+          fi
+
+          echo "Generated the following build tags:"
+          for TAG in "${BUILD_TAGS[@]}"; do
+            echo "${TAG}"
+          done
+          echo "alias_tags=${BUILD_TAGS[*]}" >> $GITHUB_OUTPUT
+
+    - name: Push to GHCR
+        uses: Wandalen/wretry.action@e68c23e6309f2871ca8ae4763e7629b9c258e1ea # v3.8.0
+        id: push
+        if: github.event_name != 'pull_request'
+        with:
+            attempt_limit: 3
+            attempt_delay: 15000
+            command: |
+                log_sum() { echo "$1" >> $GITHUB_STEP_SUMMARY; }
+                log_sum '# Push to GHCR result'
+                log_sum '```'
+                echo "${{ secrets.GITHUB_TOKEN }}" | sudo podman login ghcr.io -u ${{ github.actor }} --password-stdin
+                for tag in ${{ steps.generate-tags.outputs.alias_tags }}; do
+                    dest_image="${{ steps.registry_case.outputs.lowercase }}/${{ env.IMAGE_NAME }}:$tag"
+                    sudo skopeo copy ${{ steps.rechunk.outputs.ref }} docker://$dest_image &&
+                        log_sum "$dest_image"
+                done
+                log_sum '```'
