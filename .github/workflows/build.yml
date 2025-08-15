@@ -30,6 +30,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    if: github.ref_name == 'testing' || github.ref_name == 'unstable'
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +61,7 @@ jobs:
               if [[ "${{ matrix.target_image_flavor }}" == "main" ]]; then
                   echo "IMAGE_FLAVOR=${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
               else
-                  echo "IMAGE_FLAVOR=${{ format('{0}-{1}', matrix.target_image_flavor, matrix.target_nvidia_flavor) }}" >> $GITHUB_ENV
+                  echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}-${{ matrix.target_nvidia_flavor }}" >> $GITHUB_ENV
               fi
           else
               echo "IMAGE_FLAVOR=${{ matrix.target_image_flavor }}" >> $GITHUB_ENV
@@ -114,7 +115,7 @@ jobs:
             set -eo pipefail
             skopeo inspect docker://${{ env.PULL_IMAGE_REGISTRY }}/${{ matrix.base_image_name }}-${{ matrix.base_image_flavor }}:${{ matrix.fedora_version }} > source.json
             ver=$(jq -r '.Labels["org.opencontainers.image.version"]' source.json)
-            if [ -z "$ver" ] || [ "null" = "$ver" ]; then
+            if [ -z "$ver" ] || [ "$ver" = "null" ]; then
                 echo "inspected image version must not be empty or null"
                 exit 1
             fi
