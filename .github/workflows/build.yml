@@ -62,6 +62,8 @@ jobs:
             - base_name: critos
               target_nvidia_flavor: nvidia-open
             - base_name: critos-deck
+              target_nvidia_flavor: nvidia-open
+            - base_name: critos-deck-nvidia
               target_nvidia_flavor: nvidia
 
     steps:
