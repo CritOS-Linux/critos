@@ -62,7 +62,7 @@ jobs:
             - base_name: critos
               target_nvidia_flavor: nvidia-open
             - base_name: critos-deck
-              target_nvidia_flavor: nvidia-open
+              target_nvidia_flavor: nvidia
 
     steps:
       - name: Mount btrfs for podman storage
