@@ -2,19 +2,18 @@
 
 set -eoux pipefail
 
+echo "Preparing to install NVIDIA drivers..."
+dnf5 install -y \
+    rpmfusion-nonfree-release-tainted
+
 if [[ "${NVIDIA_FLAVOR}" == "nvidia-open" ]]; then
     echo "Installing NVIDIA Open drivers..."
     dnf5 install -y \
-        akmod-nvidia \
+        akmod-nvidia-open \
         xorg-x11-drv-nvidia-cuda
 else
     echo "Installing NVIDIA proprietary drivers..."
     dnf5 install -y \
-        xorg-x11-drv-nvidia-470xx \
-        xorg-x11-drv-nvidia-390xx \
-        xorg-x11-drv-nvidia-340xx \
-        xorg-x11-drv-nvidia-470xx-cuda \
-        xorg-x11-drv-nvidia-390xx-cuda \
-        xorg-x11-drv-nvidia-340xx-cuda
-    
+        akmod-nvidia \
+        xorg-x11-drv-nvidia-cuda
 fi
