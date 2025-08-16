@@ -60,7 +60,11 @@ ARG BASE_IMAGE="ghcr.io/ublue-os/${SOURCE_IMAGE}"
 COPY system-rootfs/desktop/shared system-rootfs/desktop/${BASE_IMAGE_NAME} /
 
 # Setup COPR Repos and RPM Fusion
-RUN mkdir -p /var/roothome && \
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    mkdir -p /var/roothome && \
     dnf5 -y install dnf5-plugins && \
     for copr in \
         @critos-org/critos  \
@@ -69,35 +73,77 @@ RUN mkdir -p /var/roothome && \
     do \
         echo "Enabling COPR REPO: $copr"; \
         dnf5 copr enable -y $copr && \
-        dnf5 -y config-manager setopt copr:copr.fedorainfracloud.org:${copr////:}.priority=98 ;\
+        dnf5 -y config-manager setopt copr:copr.fedorainfracloud.org:${copr////:}.priority=98; \
     done && unset -v copr && \
     dnf5 -y install \
         https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
         https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm && \
-    ostree container commit
+    /ctx/cleanup
 
 
-# Install Some packages
-RUN \
+# Install New packages
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
     dnf5 -y install \
         uupd \
         lutris \
-        steam && \
-    ostree container commit
+        steam \
+        gamescope \
+        mangohud \
+        yafti \
+        p7zip \
+        fastfetch \
+        input-remapper \
+        iwd && \
+    sed -i 's|uupd|& --disable-module-distrobox|' /usr/lib/systemd/system/uupd.service && \
+    /ctx/cleanup
+
+# Plasma/GNOME Configuration
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    if grep -q "kinoite" <<< ${BASE_IMAGE_NAME}; then \
+        dnf5 -y install \
+            qt \
+            krdp \
+            kdeconnectd \
+            kdeplasma-addons \
+            gnome-disk-utility && \
+        dnf5 -y remove \
+            plasma-welcome \
+            plasma-welcome-fedora \
+            kcharselect \
+            kde-partitionmanager && \
+    ; else \
+        dnf5 -y remove \
+            gnome-classic-session \
+            gnome-tour && \
+    ; fi && \
+    /ctx/cleanup
 
 # Remove packages
-RUN \
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
     dnf5 -y remove \
         firefox \
         firefox-langpacks && \
     dnf5 -y autoremove && \
     dnf5 clean all && \
-    ostree container commit
+    /ctx/cleanup
 
 # Cleanup and Finalize
 COPY system-rootfs/overrides /
-ENV FEDORA_VERSION=${FEDORA_VERSION}
-RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    systemctl --global enable podman.socket && \
+    systemctl enable uupd.service && \
     /ctx/image-info && \
     /ctx/initramfs-build && \
     /ctx/finalize
@@ -106,5 +152,48 @@ RUN dnf5 config-manager setopt skip_if_unavailable=1 && \
     bootc container lint
 
 
-# TODO - Kernel, Deck Builds, NVIDIA, etc.
+################
+# Build for Deck
+################
+
+FROM critos AS critos-deck
+
+ARG IMAGE_NAME="${IMAGE_NAME:-critos-deck}"
+ARG IMAGE_VENDOR="${IMAGE_VENDOR:-critos-linux}"
+ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-main}"
+ARG NVIDIA_FLAVOR="${NVIDIA_FLAVOR:-nvidia}"
+ARG NVIDIA_BASE="${NVIDIA_BASE:-critos}"
+ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
+ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-kinoite}"
+ARG FEDORA_VERSION="${FEDORA_VERSION:-42}"
+ARG VERSION_TAG="${VERSION_TAG}"
+ARG VERSION_PRETTY="${VERSION_PRETTY}"
+
+
+COPY system_files/deck/shared system_files/deck/${BASE_IMAGE_NAME} /
+
+
+# Install Gamescope session packages
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    dnf5 -y install \
+        gamescope-session-plus \
+        gamescope-session-steam && \
+    /ctx/cleanup
+
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    systemctl enable critos-autologin && \
+     /ctx/image-info && \
+    /ctx/initramfs-build && \
+    /ctx/finalize
+
+RUN dnf5 config-manager setopt skip_if_unavailable=1 && \
+    bootc container lint
+
+# TODO - Kernel, NVIDIA, etc.
 

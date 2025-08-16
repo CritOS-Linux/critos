@@ -1,0 +1,5 @@
+[General]
+LogoPath=/usr/share/pixmaps/fedora-logo-sprite.png
+Name=CritOS Linux
+Website=https://critos-linux.github.io/
+Variant=Deck Edition (Plasma)

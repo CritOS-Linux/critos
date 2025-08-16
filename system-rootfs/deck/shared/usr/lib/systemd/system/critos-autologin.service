@@ -1,0 +1,10 @@
+[Unit]
+Description=Enables CritOS autologin
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/critos-autologin
+
+[Install]
+WantedBy=multi-user.target
