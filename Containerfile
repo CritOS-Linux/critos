@@ -171,7 +171,7 @@ ARG VERSION_TAG="${VERSION_TAG}"
 ARG VERSION_PRETTY="${VERSION_PRETTY}"
 
 
-COPY system_files/deck/shared system_files/deck/${BASE_IMAGE_NAME} /
+COPY system-rootfs/deck/shared system-rootfs/deck/${BASE_IMAGE_NAME} /
 
 
 # Install Gamescope session packages
@@ -189,6 +189,9 @@ RUN --mount=type=cache,dst=/var/cache \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=tmpfs,dst=/tmp \
     systemctl enable critos-autologin && \
+    ln -s /usr/bin/steamos-logger /usr/bin/steamos-info && \
+    ln -s /usr/bin/steamos-logger /usr/bin/steamos-notice && \
+    ln -s /usr/bin/steamos-logger /usr/bin/steamos-warning && \
      /ctx/image-info && \
     /ctx/initramfs-build && \
     /ctx/finalize
