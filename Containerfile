@@ -28,6 +28,13 @@
 # Base image Settings
 ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-kinoite}"
 ARG BASE_IMAGE_FLAVOR="${BASE_IMAGE_FLAVOR:-main}"
+ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-main}"
+ARG NVIDIA_FLAVOR="${NVIDIA_FLAVOR:-nvidia}"
+ARG NVIDIA_BASE="${NVIDIA_BASE:-critos}"
+ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
+ARG VERSION_TAG="${VERSION_TAG}"
+ARG VERSION_PRETTY="${VERSION_PRETTY}"
+ARG SHA_HEAD_SHORT="${SHA_HEAD_SHORT}"
 ARG FEDORA_VERSION="${FEDORA_VERSION:-42}"
 ARG SOURCE_IMAGE="${SOURCE_IMAGE:-$BASE_IMAGE_NAME-$BASE_IMAGE_FLAVOR}"
 ARG BASE_IMAGE="ghcr.io/ublue-os/${SOURCE_IMAGE}"
@@ -199,5 +206,35 @@ RUN --mount=type=cache,dst=/var/cache \
 RUN dnf5 config-manager setopt skip_if_unavailable=1 && \
     bootc container lint
 
-# TODO - Kernel, NVIDIA, etc.
+##################
+# Build for NVIDIA
+##################
+
+FROM ${NVIDIA_BASE} AS critos-nvidia
+
+ARG IMAGE_NAME="${IMAGE_NAME:-critos-nvidia}"
+ARG IMAGE_VENDOR="${IMAGE_VENDOR:-critos-linux}"
+ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-nvidia}"
+ARG NVIDIA_FLAVOR="${NVIDIA_FLAVOR:-nvidia}"
+ARG NVIDIA_BASE="${NVIDIA_BASE:-critos}"
+ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
+ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-kinoite}"
+ARG FEDORA_VERSION="${FEDORA_VERSION:-42}"
+ARG VERSION_TAG="${VERSION_TAG}"
+ARG VERSION_PRETTY="${VERSION_PRETTY}"
+
+RUN --mount=type=cache,dst=/var/cache \
+    --mount=type=cache,dst=/var/log \
+    --mount=type=bind,from=ctx,source=/,target=/ctx \
+    --mount=type=tmpfs,dst=/tmp \
+    /ctx/install-nvidia && \
+    /ctx/cleanup && \
+    /ctx/image-info && \
+    /ctx/initramfs-build && \
+    /ctx/finalize
+
+RUN dnf5 config-manager setopt skip_if_unavailable=1 && \
+    bootc container lint
+
+# TODO - Kernel.
 

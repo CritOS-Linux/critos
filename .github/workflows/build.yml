@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         base_image_flavor: [main]
-        base_name: [critos, critos-deck]
+        base_name: [critos, critos-deck, critos-nvidia, critos-deck-nvidia]
         base_image_name: [kinoite]
         target_image_flavor: [main]
         target_nvidia_flavor: [nvidia, nvidia-open]
@@ -59,7 +59,10 @@ jobs:
             is_latest_version: true
             is_stable_version: true
         exclude:
-            - target_nvidia_flavor: nvidia-open
+            - base_name: critos
+              target_nvidia_flavor: nvidia-open
+            - base_name: critos-deck
+              target_nvidia_flavor: nvidia-open
 
     steps:
       - name: Mount btrfs for podman storage
