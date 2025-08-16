@@ -116,13 +116,14 @@ RUN --mount=type=cache,dst=/var/cache \
             plasma-welcome \
             plasma-welcome-fedora \
             kcharselect \
-            kde-partitionmanager && \
-    ; else \
+            kde-partitionmanager; \
+    else \
         dnf5 -y remove \
             gnome-classic-session \
-            gnome-tour && \
-    ; fi && \
+            gnome-tour; \
+    fi && \
     /ctx/cleanup
+
 
 # Remove packages
 RUN --mount=type=cache,dst=/var/cache \
