@@ -2,6 +2,8 @@
 
 set -eoux pipefail
 
+KERNEL_VERSION="6.15.9-201.fc42.x86_64"
+
 echo "Preparing to install NVIDIA drivers..."
 dnf5 install -y \
     rpmfusion-nonfree-release-tainted
@@ -11,9 +13,11 @@ if [[ "${NVIDIA_FLAVOR}" == "nvidia-open" ]]; then
     dnf5 install -y \
         akmod-nvidia-open \
         xorg-x11-drv-nvidia-cuda
+    akmods --force --kernel ${KERNEL_VERSION}
 else
     echo "Installing NVIDIA proprietary drivers..."
     dnf5 install -y \
         akmod-nvidia \
         xorg-x11-drv-nvidia-cuda
+    akmods --force --kernel ${KERNEL_VERSION}
 fi
